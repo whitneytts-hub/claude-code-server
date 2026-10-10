@@ -159,6 +159,20 @@ RUN npm install -g @openai/codex@0.162.1 @railway/cli@5.64.2 \
     && codex --version \
     && railway --version
 
+# This container's own RAILWAY_PROJECT_ID / RAILWAY_ENVIRONMENT_ID /
+# RAILWAY_SERVICE_ID make the CLI ignore `railway link` in project folders
+# and target this server instead. Move the real CLI to /usr/bin/railway-real
+# and install a wrapper that drops them as /usr/bin/railway, so every caller
+# (login or bare shells, scripts, Node child processes) goes through it.
+RUN real="$(readlink -f "$(command -v railway)")" \
+    && rm "$(command -v railway)" \
+    && ln -s "$real" /usr/bin/railway-real \
+    && ! command -v railway
+COPY railway-wrapper.sh /usr/bin/railway
+RUN chmod 755 /usr/bin/railway \
+    && [ "$(command -v railway)" = /usr/bin/railway ] \
+    && railway --version
+
 # ============================================================================
 # RUNTIME
 # Stay as root - entrypoint handles user switching based on RUN_AS_USER

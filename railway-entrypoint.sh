@@ -88,8 +88,9 @@ PROFILE
         echo "  ✓ Shell profile configured"
     fi
     
-    # Also set up .profile for login shells
-    if [ ! -f "$HOME/.profile" ] || ! grep -q '.local/bin' "$HOME/.profile" 2>/dev/null; then
+    # Also set up .profile for login shells. Check for the line this block
+    # adds, so it is appended once rather than on every start.
+    if [ ! -f "$HOME/.profile" ] || ! grep -qF '. "$HOME/.bashrc"' "$HOME/.profile" 2>/dev/null; then
         cat >> "$HOME/.profile" << 'PROFILE'
 
 # Load .bashrc for interactive shells
