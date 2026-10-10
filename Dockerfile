@@ -150,6 +150,16 @@ RUN npm install -g @anthropic-ai/claude-code \
     && echo "Claude CLI installed: $(claude --version 2>/dev/null || echo 'checking...')"
 
 # ============================================================================
+# CODEX + RAILWAY CLIS
+# Pinned global npm installs. Codex keeps its login in ~/.codex, which is on
+# the /home/clauder volume, so it survives restarts and rebuilds.
+# ============================================================================
+
+RUN npm install -g @openai/codex@0.162.1 @railway/cli@5.64.2 \
+    && codex --version \
+    && railway --version
+
+# ============================================================================
 # RUNTIME
 # Stay as root - entrypoint handles user switching based on RUN_AS_USER
 # ============================================================================
