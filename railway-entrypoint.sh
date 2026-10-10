@@ -100,12 +100,45 @@ PROFILE
     fi
     
     # ========================================================================
+    # SSH SERVER (port 2222, key login for clauder only)
+    # ========================================================================
+
+    SSH_HOST_KEY_DIR="$CLAUDER_HOME/.ssh-host-keys"
+
+    if [ -n "$SSH_PUBLIC_KEY" ]; then
+        echo "→ Starting SSH server..."
+        # Host keys live on the volume so the fingerprint survives redeploys
+        mkdir -p "$SSH_HOST_KEY_DIR"
+        [ -f "$SSH_HOST_KEY_DIR/ssh_host_ed25519_key" ] || ssh-keygen -q -t ed25519 -N '' -f "$SSH_HOST_KEY_DIR/ssh_host_ed25519_key"
+        [ -f "$SSH_HOST_KEY_DIR/ssh_host_rsa_key" ] || ssh-keygen -q -t rsa -b 4096 -N '' -f "$SSH_HOST_KEY_DIR/ssh_host_rsa_key"
+        chown -R root:root "$SSH_HOST_KEY_DIR"
+        chmod 700 "$SSH_HOST_KEY_DIR"
+        chmod 600 "$SSH_HOST_KEY_DIR"/ssh_host_*_key
+
+        # authorized_keys is rebuilt from the Railway variable on every start
+        printf '%s\n' "$SSH_PUBLIC_KEY" > /etc/ssh/authorized_keys/clauder
+        chown root:root /etc/ssh/authorized_keys/clauder
+        chmod 644 /etc/ssh/authorized_keys/clauder
+
+        mkdir -p /run/sshd
+        if /usr/sbin/sshd -t && /usr/sbin/sshd; then
+            echo "  ✓ sshd listening on 2222 ($(ssh-keygen -lf "$SSH_HOST_KEY_DIR/ssh_host_ed25519_key.pub" | cut -d' ' -f2))"
+        else
+            echo "  ⚠ sshd failed to start"
+        fi
+    else
+        echo "→ SSH_PUBLIC_KEY not set - SSH server not started"
+    fi
+
+    # ========================================================================
     # USER SWITCHING (if RUN_AS_USER=clauder)
     # ========================================================================
     
     if [ "$RUN_AS_USER" = "clauder" ]; then
         echo "→ Fixing permissions for clauder user (UID: $CLAUDER_UID)..."
         chown -R "$CLAUDER_UID:$CLAUDER_GID" "$CLAUDER_HOME" 2>/dev/null || true
+        # SSH host keys stay root-only
+        [ -d "$SSH_HOST_KEY_DIR" ] && chown -R root:root "$SSH_HOST_KEY_DIR"
         echo "  ✓ Permissions fixed"
         
         # Check if gosu is available

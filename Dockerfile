@@ -36,6 +36,54 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
+# HEADLESS CHROME + SSH
+# Shared libraries Chrome Headless Shell needs (HyperFrames renders), fonts,
+# and an SSH server for the Claude desktop app. sshd settings live in
+# sshd_config.d; railway-entrypoint.sh writes authorized_keys from
+# SSH_PUBLIC_KEY and keeps host keys on the volume.
+# ============================================================================
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        fonts-liberation \
+        libasound2t64 \
+        libatk-bridge2.0-0t64 \
+        libatk1.0-0t64 \
+        libatspi2.0-0t64 \
+        libcairo2 \
+        libcups2t64 \
+        libdbus-1-3 \
+        libdrm2 \
+        libgbm1 \
+        libglib2.0-0t64 \
+        libnspr4 \
+        libnss3 \
+        libpango-1.0-0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxkbcommon0 \
+        libxrandr2 \
+        openssh-server \
+    && rm -f /etc/ssh/ssh_host_* \
+    && mkdir -p /etc/ssh/authorized_keys /run/sshd \
+    && printf '%s\n' \
+        'Port 2222' \
+        'HostKey /home/clauder/.ssh-host-keys/ssh_host_ed25519_key' \
+        'HostKey /home/clauder/.ssh-host-keys/ssh_host_rsa_key' \
+        'PermitRootLogin no' \
+        'AllowUsers clauder' \
+        'PubkeyAuthentication yes' \
+        'AuthorizedKeysFile /etc/ssh/authorized_keys/%u' \
+        'PasswordAuthentication no' \
+        'KbdInteractiveAuthentication no' \
+        'PermitEmptyPasswords no' \
+        > /etc/ssh/sshd_config.d/10-railway.conf \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
 # PERSISTENCE CONFIGURATION
 # Default to /home/clauder for new deployments
 # ============================================================================
@@ -107,7 +155,7 @@ RUN npm install -g @anthropic-ai/claude-code \
 # ============================================================================
 
 WORKDIR /home/clauder/workspace
-EXPOSE 8080
+EXPOSE 8080 2222
 
 # Use our entrypoint which calls code-server directly
 ENTRYPOINT ["/usr/bin/railway-entrypoint.sh"]
