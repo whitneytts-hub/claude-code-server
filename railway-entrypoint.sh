@@ -293,8 +293,11 @@ echo "Starting $APP_NAME as $(whoami)..."
 echo "════════════════════════════════════════════════════════════════════════"
 echo ""
 
+# --port wins over $PORT (which code-server otherwise lets override
+# --bind-addr), so a PORT variable like 2222 can't collide with sshd
 exec dumb-init /usr/bin/code-server \
     --bind-addr 0.0.0.0:8080 \
+    --port 8080 \
     --app-name "$APP_NAME" \
     --welcome-text "$WELCOME_TEXT" \
     "$CLAUDER_HOME/workspace"
